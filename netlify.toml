@@ -1,0 +1,14 @@
+[build]
+  command = "npm run build"
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Let Wix show this page inside an embed frame.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "frame-ancestors 'self' https://www.eeyoupreneur.ca https://eeyoupreneur.ca https://*.wix.com https://*.wixsite.com https://*.parastorage.com https://*.filesusr.com"
+    Referrer-Policy = "strict-origin-when-cross-origin"

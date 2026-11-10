@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Business Assistant · Eeyoupreneur</title>
+<meta name="description" content="Free AI helper for business plans and business support in Eeyou Istchee, by Eeyoupreneur.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap" rel="stylesheet">
+<script src="vendor/marked.min.js"></script>
+<script src="vendor/purify.min.js"></script>
+<style>
+:root {
+  --spruce: #1F3B33;
+  --spruce-soft: #2C5247;
+  --birch: #F3F4EF;
+  --lichen: #DCE3CF;
+  --lake: #2E5E73;
+  --ochre: #B97A1E;
+  --ink: #1A1F1C;
+  --muted: #5A6660;
+  --line: #D3D8CC;
+  --surface: #FFFFFF;
+  --user-bg: var(--lichen);
+  --focus: var(--ochre);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --birch: #131B18; --surface: #1A2420; --ink: #E7ECE4; --muted: #9DAAA2;
+    --line: #2C3A34; --lichen: #2A3A33; --spruce: #A9C8B6; --spruce-soft: #C2DACB;
+    --lake: #8EC0D6; --ochre: #E0A447; --user-bg: #26352F;
+  }
+}
+:root[data-theme="dark"] {
+  --birch: #131B18; --surface: #1A2420; --ink: #E7ECE4; --muted: #9DAAA2;
+  --line: #2C3A34; --lichen: #2A3A33; --spruce: #A9C8B6; --spruce-soft: #C2DACB;
+  --lake: #8EC0D6; --ochre: #E0A447; --user-bg: #26352F;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--birch);
+  color: var(--ink);
+  font: 17px/1.55 "Atkinson Hyperlegible", system-ui, sans-serif;
+  display: flex; flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+button, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+textarea:focus-visible { outline: none; }
+
+/* Header */
+header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--birch);
+}
+.brand { display: flex; flex-direction: column; line-height: 1.15; margin-right: auto; }
+.brand b { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 18px; color: var(--spruce); letter-spacing: -0.01em; }
+.brand span { font-size: 14px; color: var(--muted); }
+.tool {
+  background: none; border: 1px solid var(--line); border-radius: 999px;
+  padding: 6px 12px; font-size: 14px; cursor: pointer; color: var(--ink);
+}
+.tool:hover { border-color: var(--spruce-soft); }
+.lang button { border: 0; background: none; padding: 6px 8px; font-size: 14px; cursor: pointer; color: var(--muted); }
+.lang button[aria-pressed="true"] { color: var(--spruce); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+
+/* Conversation */
+main { flex: 1; overflow-y: auto; }
+.column { max-width: 720px; margin: 0 auto; padding: 24px 16px 32px; }
+
+.welcome { padding-top: 6vh; }
+.welcome h1 {
+  font-family: "Bricolage Grotesque", sans-serif; font-weight: 700;
+  font-size: clamp(56px, 13vw, 112px); line-height: 0.92; letter-spacing: -0.035em;
+  color: var(--spruce); margin: 0 0 20px;
+}
+.welcome p { max-width: 34em; margin: 0 0 28px; color: var(--ink); font-size: 18px; }
+.starters { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
+.starters li { border-bottom: 1px solid var(--line); }
+.starters button {
+  width: 100%; text-align: left; background: none; border: 0; cursor: pointer;
+  padding: 14px 4px; font-size: 17px; color: var(--lake);
+  display: flex; justify-content: space-between; gap: 12px;
+}
+.starters button:hover { color: var(--spruce); background: color-mix(in srgb, var(--lichen) 40%, transparent); }
+
+.msg { margin: 0 0 24px; }
+.msg.user { display: flex; justify-content: flex-end; }
+.msg.user .bubble {
+  background: var(--user-bg); border-radius: 18px 18px 4px 18px;
+  padding: 10px 16px; max-width: 85%; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.msg.bot { border-left: 3px solid var(--spruce-soft); padding-left: 16px; }
+.msg.bot .body { overflow-wrap: anywhere; }
+.msg.bot .body > :first-child { margin-top: 0; }
+.msg.bot .body > :last-child { margin-bottom: 0; }
+.msg.bot h1, .msg.bot h2, .msg.bot h3 { font-family: "Bricolage Grotesque", sans-serif; line-height: 1.2; margin: 1.2em 0 0.4em; color: var(--spruce); }
+.msg.bot h1 { font-size: 24px; } .msg.bot h2 { font-size: 21px; } .msg.bot h3 { font-size: 18px; }
+.msg.bot a { color: var(--lake); }
+.msg.bot table { border-collapse: collapse; width: 100%; font-size: 15px; display: block; overflow-x: auto; }
+.msg.bot th, .msg.bot td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
+.msg.bot code { background: var(--lichen); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+.msg.bot blockquote { margin: 0; padding-left: 12px; border-left: 3px solid var(--line); color: var(--muted); }
+.actions { margin-top: 8px; display: flex; gap: 6px; }
+.actions button { background: none; border: 0; color: var(--muted); font-size: 14px; cursor: pointer; padding: 4px 6px; }
+.actions button:hover { color: var(--spruce); }
+.thinking { color: var(--muted); font-style: italic; }
+.thinking::after { content: ""; animation: dots 1.2s steps(4) infinite; }
+@keyframes dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+.error { color: #B3261E; }
+:root[data-theme="dark"] .error { color: #F2B8B5; }
+
+/* Composer */
+footer { border-top: 1px solid var(--line); background: var(--birch); padding: 12px 16px calc(10px + env(safe-area-inset-bottom)); }
+form { max-width: 720px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
+textarea {
+  flex: 1; resize: none; min-height: 48px; max-height: 200px;
+  padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 14px;
+  background: var(--surface); line-height: 1.4;
+}
+textarea:focus { outline: none; border-color: var(--spruce-soft); }
+.send {
+  height: 48px; padding: 0 20px; border: 0; border-radius: 14px; cursor: pointer;
+  background: var(--spruce); color: var(--birch); font-weight: 700;
+}
+.send:hover { background: var(--spruce-soft); }
+.send:disabled { opacity: 0.45; cursor: default; }
+.note { max-width: 720px; margin: 8px auto 0; font-size: 13px; color: var(--muted); }
+.note a { color: inherit; }
+
+@media (max-width: 520px) {
+  body { font-size: 16px; }
+  .brand span { display: none; }
+  .send { padding: 0 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .thinking::after { animation: none; content: "..."; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><b>Eeyoupreneur</b><span data-t="subtitle"></span></div>
+  <div class="lang" role="group" aria-label="Language">
+    <button type="button" data-lang="en" aria-pressed="true">EN</button>
+    <button type="button" data-lang="fr" aria-pressed="false">FR</button>
+  </div>
+  <button type="button" class="tool" id="newChat" data-t="newChat"></button>
+</header>
+
+<main id="scroller" aria-live="polite">
+  <div class="column" id="log"></div>
+</main>
+
+<footer>
+  <form id="composer">
+    <label for="input" class="visually-hidden" style="position:absolute;left:-9999px" data-t="inputLabel"></label>
+    <textarea id="input" rows="1" maxlength="6000"></textarea>
+    <button class="send" id="send" type="submit" data-t="send"></button>
+  </form>
+  <p class="note" data-t="note"></p>
+</footer>
+
+<script>
+const T = {
+  en: {
+    subtitle: "Business Assistant for Eeyou Istchee",
+    newChat: "New chat",
+    send: "Send", stop: "Stop",
+    inputLabel: "Your message",
+    placeholder: "Ask about your business idea, plan or funding…",
+    hello: "Wachiya.",
+    intro: "I can help you shape a business idea, write your business plan, and find funding and support in Eeyou Istchee. Ask me anything, in English or French.",
+    starters: [
+      "I have a business idea. Where do I start?",
+      "Help me write the executive summary for my business plan",
+      "What funding is there for a new business in my community?",
+      "How do I figure out my startup costs?"
+    ],
+    note: 'AI answers can be wrong. Confirm amounts and deadlines with the program. Don\'t share personal info like SIN or banking details. For hands-on help, <a href="https://www.eeyoupreneur.ca/contact-us" target="_blank" rel="noopener">contact Eeyoupreneur</a>.',
+    thinking: "Thinking",
+    copy: "Copy", copied: "Copied",
+    error: "Couldn't reach the assistant. Check your connection and try again.",
+    busy: "Too many messages right now. Please wait a bit and try again."
+  },
+  fr: {
+    subtitle: "Assistant d'affaires pour Eeyou Istchee",
+    newChat: "Nouvelle conversation",
+    send: "Envoyer", stop: "Arrêter",
+    inputLabel: "Votre message",
+    placeholder: "Posez une question sur votre idée, votre plan ou le financement…",
+    hello: "Wachiya.",
+    intro: "Je peux vous aider à préciser une idée d'entreprise, rédiger votre plan d'affaires et trouver du financement et du soutien en Eeyou Istchee. Écrivez en français ou en anglais.",
+    starters: [
+      "J'ai une idée d'entreprise. Par où commencer?",
+      "Aidez-moi à rédiger le sommaire de mon plan d'affaires",
+      "Quel financement existe pour une nouvelle entreprise dans ma communauté?",
+      "Comment calculer mes coûts de démarrage?"
+    ],
+    note: 'Les réponses de l\'IA peuvent contenir des erreurs. Confirmez les montants et les dates avec le programme. Ne partagez pas d\'informations personnelles (NAS, données bancaires). Pour un accompagnement, <a href="https://www.eeyoupreneur.ca/contact-us" target="_blank" rel="noopener">contactez Eeyoupreneur</a>.',
+    thinking: "Réflexion",
+    copy: "Copier", copied: "Copié",
+    error: "Impossible de joindre l'assistant. Vérifiez votre connexion et réessayez.",
+    busy: "Trop de messages en ce moment. Patientez un peu et réessayez."
+  }
+};
+
+const store = {
+  get(k) { try { return JSON.parse(sessionStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+let lang = store.get("lang") || ((navigator.language || "en").startsWith("fr") ? "fr" : "en");
+let history = store.get("history") || [];
+let controller = null;
+
+const $ = (s) => document.querySelector(s);
+const log = $("#log"), input = $("#input"), sendBtn = $("#send"), scroller = $("#scroller");
+const t = (k) => T[lang][k];
+
+marked.setOptions({ breaks: true, gfm: true });
+const md = (s) => DOMPurify.sanitize(marked.parse(s), { ADD_ATTR: ["target"] });
+DOMPurify.addHook("afterSanitizeAttributes", (n) => { if (n.tagName === "A") { n.setAttribute("target", "_blank"); n.setAttribute("rel", "noopener"); } });
+
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach((el) => {
+    const k = el.dataset.t;
+    if (k === "send") return;
+    if (k === "note") el.innerHTML = t(k); else el.textContent = t(k);
+  });
+  sendBtn.textContent = controller ? t("stop") : t("send");
+  input.placeholder = t("placeholder");
+  document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.lang === lang));
+  render();
+}
+
+function render() {
+  log.innerHTML = "";
+  if (!history.length) {
+    const w = document.createElement("section");
+    w.className = "welcome";
+    w.innerHTML = `<h1>${t("hello")}</h1><p>${t("intro")}</p><ul class="starters"></ul>`;
+    const ul = w.querySelector("ul");
+    t("starters").forEach((s) => {
+      const li = document.createElement("li"), b = document.createElement("button");
+      b.type = "button"; b.textContent = s;
+      b.onclick = () => send(s);
+      li.append(b); ul.append(li);
+    });
+    log.append(w);
+    return;
+  }
+  history.forEach((m) => addMessage(m.role, m.content));
+}
+
+function addMessage(role, content) {
+  const wrap = document.createElement("div");
+  wrap.className = "msg " + (role === "user" ? "user" : "bot");
+  if (role === "user") {
+    const b = document.createElement("div"); b.className = "bubble"; b.textContent = content; wrap.append(b);
+  } else {
+    const body = document.createElement("div"); body.className = "body";
+    body.innerHTML = content ? md(content) : `<span class="thinking">${t("thinking")}</span>`;
+    wrap.append(body);
+    if (content) addActions(wrap, () => content);
+  }
+  log.append(wrap);
+  return wrap;
+}
+
+function addActions(wrap, getText) {
+  const a = document.createElement("div"); a.className = "actions";
+  const c = document.createElement("button"); c.type = "button"; c.textContent = t("copy");
+  c.onclick = async () => {
+    try { await navigator.clipboard.writeText(getText()); c.textContent = t("copied"); setTimeout(() => (c.textContent = t("copy")), 1500); } catch {}
+  };
+  a.append(c); wrap.append(a);
+}
+
+const nearBottom = () => scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 120;
+const toBottom = () => { scroller.scrollTop = scroller.scrollHeight; };
+
+async function send(text) {
+  text = (text || "").trim();
+  if (!text || controller) return;
+  if (!history.length) log.innerHTML = "";
+  history.push({ role: "user", content: text });
+  addMessage("user", text);
+  input.value = ""; grow();
+  const bot = addMessage("assistant", "");
+  const body = bot.querySelector(".body");
+  toBottom();
+
+  controller = new AbortController();
+  sendBtn.textContent = t("stop");
+  let answer = "";
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ messages: history }),
+      signal: controller.signal
+    });
+    if (!res.ok) {
+      const msg = res.status === 429 ? t("busy") : (await res.text().catch(() => "")) || t("error");
+      throw new Error(msg);
+    }
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      answer += dec.decode(value, { stream: true });
+      const stick = nearBottom();
+      body.innerHTML = md(answer);
+      if (stick) toBottom();
+    }
+  } catch (err) {
+    if (err.name !== "AbortError") {
+      body.innerHTML = `<p class="error">${DOMPurify.sanitize(err.message || t("error"))}</p>`;
+      history.pop();
+      store.set("history", history);
+      finish(); return;
+    }
+  }
+  if (answer.trim()) {
+    history.push({ role: "assistant", content: answer });
+    addActions(bot, () => answer);
+  } else if (!answer) {
+    history.pop(); bot.previousElementSibling?.remove(); bot.remove();
+    if (!history.length) render();
+  }
+  store.set("history", history);
+  finish();
+}
+
+function finish() {
+  controller = null;
+  sendBtn.textContent = t("send");
+  input.focus();
+}
+
+function grow() { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 200) + "px"; }
+
+$("#composer").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (controller) { controller.abort(); return; }
+  send(input.value);
+});
+input.addEventListener("input", grow);
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("#composer").requestSubmit(); }
+});
+$("#newChat").onclick = () => {
+  if (controller) controller.abort();
+  history = []; store.set("history", history); render(); input.focus();
+};
+document.querySelectorAll("[data-lang]").forEach((b) => b.onclick = () => { lang = b.dataset.lang; store.set("lang", lang); applyLang(); });
+
+applyLang();
+</script>
+</body>
+</html>

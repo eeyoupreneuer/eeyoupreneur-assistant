@@ -1,0 +1,20 @@
+{
+  "name": "eeyoupreneur-business-assistant",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "AI business planning assistant for Eeyou Istchee, by Eeyoupreneur",
+  "scripts": {
+    "build": "node scripts/build-knowledge.mjs",
+    "dev": "node scripts/build-knowledge.mjs && node scripts/dev-server.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.7.0"
+  },
+  "devDependencies": {
+    "dompurify": "^3.4.17",
+    "mammoth": "^1.13.0",
+    "marked": "^12.0.2",
+    "unpdf": "^2.1.0"
+  }
+}
