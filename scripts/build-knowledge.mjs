@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const KNOWLEDGE_DIR = path.join(root, "knowledge");
-const OUT_DIR = path.join(root, "netlify", "functions", "_generated");
+const OUT_DIR = path.join(root, "lib", "_generated");
 const OUT_FILE = path.join(OUT_DIR, "knowledge.mjs");
 
 // Roughly 150k tokens. Past this, answers get slower and costlier; see README.

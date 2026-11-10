@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^1.7.0"
   },
   "devDependencies": {
+    "docx": "^9.15.3",
     "dompurify": "^3.4.17",
     "mammoth": "^1.13.0",
     "marked": "^12.0.2",

@@ -1,14 +1,24 @@
 // Server side of the chat. Receives the conversation, asks Claude, streams the answer back.
 // Your API key stays here on the server — it is never sent to visitors' browsers.
 import Anthropic from "@anthropic-ai/sdk";
-import { buildSystem } from "./prompt.mjs";
-import { KNOWLEDGE } from "./_generated/knowledge.mjs";
+import { buildSystem } from "../../lib/prompt.mjs";
+import { KNOWLEDGE } from "../../lib/_generated/knowledge.mjs";
 
 const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5-5";
 const MAX_TURNS = 40;            // messages kept per conversation
 const MAX_MESSAGE_CHARS = 6000;  // longest single message a visitor can send
 const MAX_ANSWER_TOKENS = 2000;  // longest answer (about 1,500 words)
 const PER_IP_PER_HOUR = Number(process.env.RATE_LIMIT_PER_HOUR) || 40; // per network per hour; raise for workshops (everyone on one Wi-Fi shares a limit)
+
+// Web search: lets the assistant look things up when the resource library doesn't cover it.
+// Turn off with WEB_SEARCH=off. WEB_SEARCH_MAX caps searches per answer (each search has a small fee).
+const WEB_SEARCH_ON = (process.env.WEB_SEARCH || "on").toLowerCase() !== "off";
+const WEB_SEARCH_TOOL = {
+  type: "web_search_20260318",
+  name: "web_search",
+  max_uses: Number(process.env.WEB_SEARCH_MAX) || 3,
+  user_location: { type: "approximate", region: "Quebec", country: "CA", timezone: "America/Toronto" },
+};
 
 const hits = new Map(); // ip -> [timestamps]; resets when the server sleeps
 function rateLimited(ip) {
@@ -66,22 +76,73 @@ export default async (req, context) => {
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+  // Status messages for the page (e.g. "searching the web") travel inside \x1e…\x1e markers,
+  // which the page shows as a status line and never stores in the conversation.
+  const status = (obj) => encoder.encode(`\x1e${JSON.stringify(obj)}\x1e`);
+
   const stream = new ReadableStream({
     async start(controller) {
-      try {
-        const claude = client.messages.stream({
-          model: MODEL,
-          max_tokens: MAX_ANSWER_TOKENS,
-          system: buildSystem(KNOWLEDGE),
-          messages,
-        });
-        for await (const event of claude) {
-          if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
-            controller.enqueue(encoder.encode(event.delta.text));
+      const sources = new Map(); // url -> title, from web citations
+      let wroteText = false;
+
+      async function run(useSearch) {
+        let convo = messages;
+        // A long search turn can pause; continue it up to 3 times.
+        for (let round = 0; round < 3; round++) {
+          const claude = client.messages.stream({
+            model: MODEL,
+            max_tokens: MAX_ANSWER_TOKENS,
+            system: buildSystem(KNOWLEDGE, { webSearch: useSearch }),
+            ...(useSearch ? { tools: [WEB_SEARCH_TOOL] } : {}),
+            messages: convo,
+          });
+          const toolInput = {}; // block index -> partial JSON of a search query
+          for await (const event of claude) {
+            if (event.type === "content_block_start" && event.content_block?.type === "server_tool_use") {
+              toolInput[event.index] = "";
+              controller.enqueue(status({ searching: true }));
+            } else if (event.type === "content_block_delta") {
+              const d = event.delta;
+              if (d?.type === "text_delta") {
+                wroteText = true;
+                controller.enqueue(encoder.encode(d.text));
+              } else if (d?.type === "input_json_delta" && event.index in toolInput) {
+                toolInput[event.index] += d.partial_json;
+              } else if (d?.type === "citations_delta" && d.citation?.type === "web_search_result_location") {
+                if (d.citation.url && !sources.has(d.citation.url)) sources.set(d.citation.url, d.citation.title || d.citation.url);
+              }
+            } else if (event.type === "content_block_stop" && event.index in toolInput) {
+              try {
+                const q = JSON.parse(toolInput[event.index] || "{}").query;
+                if (q) controller.enqueue(status({ searching: true, query: q }));
+              } catch {}
+              delete toolInput[event.index];
+            }
           }
+          const final = await claude.finalMessage();
+          if (final.stop_reason !== "pause_turn") break;
+          convo = [...convo, { role: "assistant", content: final.content }];
+        }
+      }
+
+      try {
+        try {
+          await run(WEB_SEARCH_ON);
+        } catch (err) {
+          // If web search isn't available (e.g. turned off for the API account), answer without it.
+          if (WEB_SEARCH_ON && !wroteText) {
+            console.error("Retrying without web search:", err?.status, err?.message);
+            await run(false);
+          } else throw err;
+        }
+        controller.enqueue(status({ searching: false }));
+        if (sources.size) {
+          const list = [...sources].slice(0, 8).map(([url, title]) => `- [${title.replace(/[\[\]]/g, "")}](${url})`).join("\n");
+          controller.enqueue(encoder.encode(`\n\n**Web sources**\n${list}`));
         }
       } catch (err) {
         console.error("Claude API error:", err?.status, err?.message);
+        controller.enqueue(status({ searching: false }));
         controller.enqueue(encoder.encode("\n\n_Sorry — something went wrong on our end. Please try again in a moment._"));
       } finally {
         controller.close();

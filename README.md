@@ -9,9 +9,10 @@ An AI chat for business plans and business support in Eeyou Istchee. It runs on 
 | Folder / file | What it is | Will you edit it? |
 |---|---|---|
 | `knowledge/` | Your resource library: PDFs, Word files, notes | Yes, often |
-| `netlify/functions/prompt.mjs` | The assistant's instructions and personality | Sometimes |
-| `public/index.html` | The chat page people see | Rarely |
-| `netlify/functions/chat.mjs` | Server code that talks to Claude | Rarely (limits are at the top) |
+| `lib/prompt.mjs` | The assistant's instructions and personality | Sometimes |
+| `lib/plan.mjs` | What each business plan section covers | Sometimes |
+| `public/index.html`, `public/plan.js` | The chat page and the My plan tab | Rarely |
+| `netlify/functions/chat.mjs`, `plan.mjs` | Server code that talks to Claude | Rarely (limits are at the top) |
 | `scripts/` | Build and local test tools | No |
 
 ---
@@ -57,7 +58,7 @@ If you use another Wix address or domain for the embed and the chat won't load i
 2. Netlify rebuilds automatically in about a minute. The deploy log lists which files were read and which were skipped.
 
 ## Changing how it behaves
-Edit the text in `netlify/functions/prompt.mjs`, e.g. what topics it covers, how it mentions Eeyoupreneur, tone. Commit, and Netlify redeploys.
+Edit the text in `lib/prompt.mjs` (chat) or `lib/plan.mjs` (plan writer), e.g. what topics it covers, how it mentions Eeyoupreneur, tone. Commit, and Netlify redeploys.
 
 ## Settings (Netlify environment variables)
 | Name | What it does |
@@ -65,6 +66,9 @@ Edit the text in `netlify/functions/prompt.mjs`, e.g. what topics it covers, how
 | `ANTHROPIC_API_KEY` | Required. Your Claude key. |
 | `CLAUDE_MODEL` | Optional. Default `claude-sonnet-5-5`. Use `claude-haiku-5-5` for cheaper, faster, simpler answers. |
 | `RATE_LIMIT_PER_HOUR` | Optional. Messages allowed per network per hour (default 40). Everyone on the same Wi-Fi shares one limit, so set it to 500 for workshops. |
+| `WEB_SEARCH` | Optional. Web search is on by default; set to `off` to answer from the resource library only. |
+| `WEB_SEARCH_MAX` | Optional. Most web searches per answer (default 3). Each search has a small fee on top of normal usage. |
+| `PLAN_MODEL` | Optional. Model for the My plan writer only (defaults to `CLAUDE_MODEL`). A slower model may hit Netlify's time limit on long sections. |
 | `ALLOWED_ORIGINS` | Optional. Extra websites allowed to call the chat, comma separated. Usually not needed. |
 
 ## Costs

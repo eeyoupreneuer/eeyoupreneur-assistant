@@ -4,7 +4,9 @@ import http from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import handler from "../netlify/functions/chat.mjs";
+import chat from "../netlify/functions/chat.mjs";
+import plan from "../netlify/functions/plan.mjs";
+const routes = { "/api/chat": chat, "/api/plan": plan };
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
 const PORT = process.env.PORT || 8888;
@@ -12,7 +14,8 @@ const types = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": 
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
-  if (url.pathname === "/api/chat") {
+  if (routes[url.pathname]) {
+    const handler = routes[url.pathname];
     const chunks = [];
     for await (const c of req) chunks.push(c);
     const request = new Request(url, { method: req.method, headers: req.headers, body: req.method === "POST" ? Buffer.concat(chunks) : undefined });
