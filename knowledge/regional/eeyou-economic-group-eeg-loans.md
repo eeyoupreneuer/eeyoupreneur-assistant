@@ -1,13 +1,20 @@
 # Eeyou Economic Group / CFDC Inc. (EEG) — Business loans
 
-Sources: EEG description of loan funds (screenshot) and EEG "Loan Application Form" (PDF). Confirm current amounts and requirements with EEG.
+Sources: EEG "Types of Programs" poster, EEG description of loan funds (screenshot), and EEG "Loan Application Form" (PDF). Confirm current amounts and requirements with EEG.
 
-EEG offers business loans for start-ups and expansions for Cree entrepreneurs in Eeyou Istchee.
+Contact: Eeyou Economic Group/CFDC Inc. · www.eeyoueconomicgroup.ca · (819) 753-2560 · Facebook: Eeyou Economic Group/CFDC Inc. · Instagram: @eeyoueconomicgroup. Supporting Cree entrepreneurs since 1987. EEG suggests talking to your local Economic Development Officer first on how to get started, or contacting EEG directly.
+
+EEG offers business loans for start-ups, expansions and acquisitions for Cree entrepreneurs in Eeyou Istchee.
 
 ## Loan funds
-- **EEG Investment Fund:** repayable business loan for start-up or expansion. Finances up to **40% of total project cost, max $150,000.**
-- **Youth Strategy Fund:** for eligible entrepreneurs aged **18–39**, financing up to **$25,000.**
-- **Micro Fund:** for smaller start-up needs, up to **$5,000.** Up to 50% may be given as a grant if all program requirements are met and scheduled loan payments are made.
+| Fund | What it is | Amount | Terms |
+|---|---|---|---|
+| **EEG Investment Fund** | Repayable loan for a start-up, expansion or acquisition | Up to **40% of project cost**, max **$150,000** | Repayable loan |
+| **Youth Strategy Fund** | Repayable loan for entrepreneurs aged **18–39** | **$5,000 minimum** to **$25,000 maximum** | **2 years interest-free** |
+| **Micro Funding** | For smaller start-up needs | Up to **$5,000** | **50% loan and 50% grant**; repayment period of **no more than 24 months**. The grant half depends on meeting program requirements and making scheduled loan payments. |
+
+## Who can apply (all funds)
+Cree beneficiaries under the JBNQA, with a project in Cree territory supported by a Band Council Resolution. A business plan and other documents are required.
 
 ## Loan policies
 - Promoter must be Cree and a beneficiary under the James Bay and Northern Quebec Agreement (JBNQA).
