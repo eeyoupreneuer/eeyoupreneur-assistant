@@ -326,7 +326,19 @@
   }
 
   async function writeSection(id, note = "") {
-    plan.sections[id] = { text: "", status: "writing" };
+    let partial = "";
+    // If a section is cut off (time limit or length), ask the assistant to continue it, up to 3 times.
+    for (let part = 0; part < 4; part++) {
+      const r = await writePart(id, part === 0 ? note : "", partial);
+      if (r.ok) return true;
+      if (r.cut && r.text.trim() && part < 3 && !stopRequested) { partial = r.text; continue; }
+      return false;
+    }
+    return false;
+  }
+
+  async function writePart(id, note, partial) {
+    plan.sections[id] = { text: partial, status: "writing" };
     liveStatus = "";
     updateBar();
     document.getElementById(`sec-${id}`)?.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -337,7 +349,7 @@
       const res = await fetch("/api/plan", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ section: id, answers: plan.answers, chat: plan.chat || "", written, note, lang: plan.lang || lang }),
+        body: JSON.stringify({ section: id, answers: plan.answers, chat: plan.chat || "", written, note, partial, lang: plan.lang || lang }),
         signal: abortCtl.signal,
       });
       if (!res.ok) { busy = res.status === 429; throw new Error("http " + res.status); }
@@ -359,19 +371,31 @@
           } catch {}
           return false;
         }).join("");
-        plan.sections[id].text = textOut;
+        const full = joinParts(partial, textOut);
+        plan.sections[id].text = full;
         const now = Date.now();
-        if (now - last > 120) { last = now; const b = document.querySelector(`#sec-${id} .sec-body`); if (b) b.innerHTML = textOut ? md(textOut) : `<p class="thinking">${esc(pt("sections")[id])}</p>`; const lv = root.querySelector(".status-line .live"); if (lv) lv.textContent = liveStatus ? ` · ${liveStatus}` : ""; }
+        if (now - last > 120) { last = now; const b = document.querySelector(`#sec-${id} .sec-body`); if (b) b.innerHTML = full ? md(full) : `<p class="thinking">${esc(pt("sections")[id])}</p>`; const lv = root.querySelector(".status-line .live"); if (lv) lv.textContent = liveStatus ? ` · ${liveStatus}` : ""; }
       }
     } catch (err) {
       if (err.name === "AbortError") error = true;
       else error = true;
     }
-    const ok = done && !error && textOut.trim().length > 0;
-    plan.sections[id] = ok ? { text: textOut.trim(), status: "done", truncated } : { text: textOut, status: "error", busy };
+    const full = joinParts(partial, textOut);
+    const ok = done && !error && !truncated && full.trim().length > 0;
+    // Cut off = the stream ended without finishing (time limit) or hit the length limit.
+    const cut = !ok && !busy && !stopRequested && (truncated || (!done && !error)) && full.trim().length > 0;
+    plan.sections[id] = ok ? { text: full.trim(), status: "done" } : { text: full, status: cut ? "writing" : "error", busy };
     save();
-    updateSection(id);
-    return ok;
+    if (!cut) updateSection(id);
+    return { ok, cut, text: full };
+  }
+
+  // Stitch a continuation onto the cut-off text without doubling spaces or losing them.
+  function joinParts(a, b) {
+    if (!a) return b;
+    if (!b) return a;
+    const needsSpace = /[\w.,;:!?)]$/.test(a) && /^[A-Za-zÀ-ÿ(]/.test(b) && !/\w$/.test(a) ;
+    return a + (needsSpace ? " " : "") + b;
   }
 
   // ---------- Word export ----------
@@ -507,5 +531,6 @@
   try { startTab = location.hash === "#plan" ? "plan" : JSON.parse(sessionStorage.getItem("tab")) || "chat"; } catch {}
   setTab(startTab);
   // A section was mid-write when the page closed: mark it for retry.
-  if (plan) { for (const id of WRITE_ORDER) if (plan.sections[id]?.status === "writing") plan.sections[id].status = "error"; save(); }
+  // Sections cut short by an earlier version are rewritten when the person clicks Continue writing.
+  if (plan) { for (const id of WRITE_ORDER) { const s = plan.sections[id]; if (s?.status === "writing" || (s?.status === "done" && s.truncated)) s.status = "error"; } save(); }
 })();

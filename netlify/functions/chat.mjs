@@ -7,7 +7,11 @@ import { KNOWLEDGE } from "../../lib/_generated/knowledge.mjs";
 const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5-5";
 const MAX_TURNS = 40;            // messages kept per conversation
 const MAX_MESSAGE_CHARS = 6000;  // longest single message a visitor can send
-const MAX_ANSWER_TOKENS = 2000;  // longest answer (about 1,500 words)
+const MAX_ANSWER_TOKENS = 3000;  // longest answer (about 2,000 words)
+// Sonnet 5.5 thinks before answering by default, and thinking counts toward max_tokens.
+// "between_tools" turns off up-front thinking so answers start fast and don't get cut short.
+// Set THINKING=adaptive in Netlify to let the model think first.
+const THINKING = (process.env.THINKING || "").toLowerCase() === "adaptive" ? null : { type: "between_tools" };
 const PER_IP_PER_HOUR = Number(process.env.RATE_LIMIT_PER_HOUR) || 40; // per network per hour; raise for workshops (everyone on one Wi-Fi shares a limit)
 
 // Web search: lets the assistant look things up when the resource library doesn't cover it.
@@ -85,7 +89,7 @@ export default async (req, context) => {
       const sources = new Map(); // url -> title, from web citations
       let wroteText = false;
 
-      async function run(useSearch) {
+      async function run(useSearch, withThinking = true) {
         let convo = messages;
         // A long search turn can pause; continue it up to 3 times.
         for (let round = 0; round < 3; round++) {
@@ -93,6 +97,7 @@ export default async (req, context) => {
             model: MODEL,
             max_tokens: MAX_ANSWER_TOKENS,
             system: buildSystem(KNOWLEDGE, { webSearch: useSearch }),
+            ...(withThinking && THINKING ? { thinking: THINKING } : {}),
             ...(useSearch ? { tools: [WEB_SEARCH_TOOL] } : {}),
             messages: convo,
           });
@@ -129,11 +134,11 @@ export default async (req, context) => {
         try {
           await run(WEB_SEARCH_ON);
         } catch (err) {
-          // If web search isn't available (e.g. turned off for the API account), answer without it.
-          if (WEB_SEARCH_ON && !wroteText) {
-            console.error("Retrying without web search:", err?.status, err?.message);
-            await run(false);
-          } else throw err;
+          if (wroteText) throw err;
+          // A model that doesn't accept this thinking setting, or web search being off: retry simply.
+          console.error("Retrying with basic settings:", err?.status, err?.message);
+          const thinkingIssue = err?.status === 400 && /thinking/i.test(err?.message || "");
+          await run(thinkingIssue ? WEB_SEARCH_ON : false, false);
         }
         controller.enqueue(status({ searching: false }));
         if (sources.size) {

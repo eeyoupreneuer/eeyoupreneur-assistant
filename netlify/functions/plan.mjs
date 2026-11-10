@@ -7,7 +7,11 @@ import { PLAN_GUIDE, SECTION_IDS, buildPlanRequest } from "../../lib/plan.mjs";
 
 // Plans can use a different (e.g. more capable) model than the chat. Slower models risk hitting the time limit.
 const MODEL = process.env.PLAN_MODEL || process.env.CLAUDE_MODEL || "claude-sonnet-5-5";
-const MAX_SECTION_TOKENS = 1900;
+const MAX_SECTION_TOKENS = 3200;
+// Sonnet 5.5 thinks before answering by default, and thinking counts toward max_tokens.
+// "between_tools" turns off up-front thinking: faster sections that don't get cut short.
+// Set THINKING=adaptive in Netlify to let the model think first (slower; needs a bigger budget).
+const THINKING = (process.env.THINKING || "").toLowerCase() === "adaptive" ? null : { type: "between_tools" };
 const PER_IP_PER_HOUR = Number(process.env.RATE_LIMIT_PER_HOUR) || 40;
 const WEB_SEARCH_ON = (process.env.WEB_SEARCH || "on").toLowerCase() !== "off";
 
@@ -49,6 +53,7 @@ export default async (req, context) => {
     written,
     note: clip(body.note, 1000),
     lang: body.lang === "fr" ? "fr" : "en",
+    partial: clip(body.partial, 14000),
   });
 
   const encoder = new TextEncoder();
@@ -74,13 +79,14 @@ export default async (req, context) => {
   return new Response(new ReadableStream({
     async start(controller) {
       let wrote = false;
-      async function run(withSearch) {
+      async function run(withSearch, withThinking = true) {
         let convo = [{ role: "user", content: prompt }];
         for (let round = 0; round < 3; round++) {
           const claude = client.messages.stream({
             model: MODEL,
             max_tokens: MAX_SECTION_TOKENS,
             system,
+            ...(withThinking && THINKING ? { thinking: THINKING } : {}),
             ...(withSearch ? { tools: [{ type: "web_search_20260318", name: "web_search", max_uses: spec.search, user_location: { type: "approximate", region: "Quebec", country: "CA", timezone: "America/Toronto" } }] } : {}),
             messages: convo,
           });
@@ -101,8 +107,10 @@ export default async (req, context) => {
         let stop;
         try { stop = await run(useSearch); }
         catch (err) {
-          if (useSearch && !wrote) { console.error("Plan: retrying without web search:", err?.status, err?.message); stop = await run(false); }
-          else throw err;
+          if (wrote) throw err;
+          // A model that doesn't accept this thinking setting, or web search being off: retry simply.
+          console.error("Plan: retrying with basic settings:", err?.status, err?.message);
+          stop = await run(err?.status === 400 && /thinking/i.test(err?.message || "") ? useSearch : false, false);
         }
         // "done" tells the page the section finished; if it never arrives, the page offers a retry.
         controller.enqueue(status({ searching: false, done: true, truncated: stop === "max_tokens" }));
